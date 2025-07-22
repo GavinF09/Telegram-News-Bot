@@ -1,13 +1,14 @@
 package main
 
 import (
-	"errors"
 	"log"
 	"os"
 
 	// "time"
 
 	// "github.com/mmcdole/gofeed"
+
+	"tele-news-bot/commands"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -16,11 +17,6 @@ import (
 var (
 	// bot info
 	bot *tgbotapi.BotAPI
-
-	// fake database
-	// echoUsers = make([]int, 0)
-	// the val of the map is not important
-	echoUsers = make(map[int64]bool)
 )
 
 func main() {
@@ -53,12 +49,8 @@ func main() {
 
 		if update.Message.IsCommand() {
 			handleCommand(update.Message, pMsg)
-		} else {
-			// check if echo is enabled for user
-			_, ok := echoUsers[update.Message.Chat.ID]
-			if ok {
-				msg.Text = update.Message.Text
-			}
+		} else if commands.EchoMessage(update.Message.Chat.ID) {
+			msg.Text = update.Message.Text
 		}
 		if msg.Text != "" {
 			if _, err := bot.Send(msg); err != nil {
@@ -82,11 +74,7 @@ func handleCommand(message *tgbotapi.Message, msg *tgbotapi.MessageConfig) error
 		msg.Text = "This is a testing bot work in progress"
 	// END  global commands
 	case "echo":
-		status, err := toggleEcho(message.Chat.ID)
-		if err != nil {
-			msg.Text = "Something failed"
-			return nil
-		}
+		status := commands.ToggleEcho(message.Chat.ID)
 		if status == 0 {
 			msg.Text = "Stopped echo"
 		}
@@ -99,20 +87,4 @@ func handleCommand(message *tgbotapi.Message, msg *tgbotapi.MessageConfig) error
 	}
 
 	return nil
-}
-
-func toggleEcho(userid int64) (echoStatus int, err error) {
-	// see if user already enabled echo
-	_, ok := echoUsers[userid]
-	// user is already registered
-	if ok {
-		delete(echoUsers, userid)
-		return 0, nil
-	} else {
-		echoUsers[userid] = true
-		return 1, nil
-	}
-
-	return -1, errors.New("something failed")
-
 }
