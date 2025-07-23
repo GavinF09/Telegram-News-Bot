@@ -1,0 +1,54 @@
+package commands
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/mmcdole/gofeed"
+)
+
+func createRSSFeed(newsSrc string, url string, interval time.Duration) {
+
+	ticker := time.NewTicker(interval)
+	lastItemTimestamp := time.Date(0, 1, 1, 0, 0, 0, 0, time.Local)
+
+	log.Printf("Started feed from %s\n", newsSrc)
+
+	for {
+		// log.Println("Getting feed. Last item: " + lastItemTimestamp.Format(time.RFC3339))
+		fp := gofeed.NewParser()
+		feed, err := fp.ParseURL(url)
+		if err != nil {
+			log.Printf("Error fetching RSS feed: %v\n", err)
+			continue
+		}
+		earliestNewItem := -1
+
+		// loop the list of items from the back to find the earliest new item
+		for i := feed.Len() - 1; i >= 0; i-- {
+			itemTime := *feed.Items[i].PublishedParsed
+			// fmt.Println(itemTime)
+			// check if it is a new article
+			// if itemTime.Local().After(lastItemTimestamp) {
+			if itemTime.After(lastItemTimestamp) {
+				earliestNewItem = i
+				break
+			}
+		}
+
+		if earliestNewItem == -1 {
+			log.Println("No new items found")
+		} else {
+			// println(earliestNewItem)
+			// println(feed.Items[earliestNewItem].Title)
+			for i := 0; i <= earliestNewItem; i++ {
+				fmt.Printf("%s %s %s %s\n", newsSrc, feed.Items[i].PublishedParsed.Local(), feed.Items[i].Title, feed.Items[i].Link)
+			}
+		}
+
+		// get the time from the latest item
+		lastItemTimestamp = *feed.Items[0].PublishedParsed
+		<-ticker.C
+	}
+}
